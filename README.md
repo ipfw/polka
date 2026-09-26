@@ -124,6 +124,40 @@ make build        # builds web UI + bin/polka + bin/polka-desktop
 ./bin/polka serve --library-dir /path/to/books
 ```
 
+### macOS frontend + Ubuntu RISC-V deployment
+
+On an Ubuntu RISC-V host, Node.js packages may not be available in a suitable
+version. Build the frontend on a Mac, then copy the architecture-independent
+`web/dist` directory to the server. Both checkouts must be at the same commit.
+
+On the Mac:
+
+```sh
+cd ~/polka
+git pull --ff-only origin main
+cd web
+npm install       # first time only
+npm test
+npm run build
+rsync -av --delete ~/polka/web/dist/ <server>:/path/to/polka/web/dist/
+```
+
+On the RISC-V server:
+
+```sh
+cd ~/polka
+git pull --ff-only origin main
+PATH=/usr/local/go/bin:$PATH GOFLAGS='-tags=nodynamic' go test ./...
+PATH=/usr/local/go/bin:$PATH GOFLAGS='-tags=nodynamic' go build -trimpath \
+  -ldflags="-s -w -X main.version=$(git describe --tags --always --dirty)" \
+  -o bin/polka ./cmd/polka
+sudo systemctl restart polka.service
+```
+
+The server needs Pandoc installed for FB2-to-EPUB downloads. The existing
+service uses `/srv/polka` for Polka data and `/srv/media/fb2.Flibusta.Net` for
+the read-only Flibusta library.
+
 ## Importing a large catalog
 
 Polka understands `.inpx` index files (MyHomeLib / Flibusta format) — both
