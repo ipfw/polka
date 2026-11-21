@@ -41,6 +41,15 @@ func TestReadingLists(t *testing.T) {
 	if len(readIDs["ids"]) != 1 || readIDs["ids"][0] != bookID {
 		t.Fatalf("read ids = %v", readIDs)
 	}
+	// The "Read" shelf closes the home page
+	var home map[string][]map[string]any
+	resp, _ = client.Get(ts.URL + "/main/getBooks/getHomeShelves")
+	json.NewDecoder(resp.Body).Decode(&home)
+	resp.Body.Close()
+	if sh := home["shelves"]; len(sh) == 0 || sh[len(sh)-1]["id"] != "read" || len(sh[len(sh)-1]["books"].([]any)) != 1 {
+		t.Fatalf("read shelf is not last: %v", sh)
+	}
+
 	resp = postJSON(t, client, ts.URL+"/api/v1/books/"+itoa64(bookID)+"/read", map[string]any{"read": false})
 	resp.Body.Close()
 	resp = postJSON(t, client, ts.URL+"/api/v1/books/"+itoa64(bookID)+"/wishlist", map[string]any{"add": true})
