@@ -347,6 +347,25 @@ const BookPage = ({ user, sync }) => {
             authorsLine && <div className="book-page__authors">{authorsLine}</div>
           )}
 
+          {data?.series?.length ? (
+            <div className="book-page__series-links">
+              {t("book.series")}{" "}
+              {data.series.map((s, i) => (
+                <span key={s.SeriesID || i}>
+                  {i > 0 && "; "}
+                  {s.SeriesID ? (
+                    <Link to={`/series/${s.SeriesID}`} className="book-page__author-link">
+                      {s.SeriesTitle}
+                    </Link>
+                  ) : (
+                    s.SeriesTitle
+                  )}
+                  {s.SeqNumber ? `, № ${s.SeqNumber}` : ""}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <div className="book-page__ratings">
             <div className="book-page__rating-block">
               <span className="book-page__rating-source">{t("book.rating.polka")}</span>
