@@ -26,6 +26,26 @@ func TestReadingLists(t *testing.T) {
 		t.Fatalf("wishlist toggle = %v", wt)
 	}
 
+	// "Read": removes from "Want to read", shows up in /api/v1/read, toggles back
+	resp = postJSON(t, client, ts.URL+"/api/v1/books/"+itoa64(bookID)+"/read", map[string]any{"read": true})
+	var rd map[string]any
+	json.NewDecoder(resp.Body).Decode(&rd)
+	resp.Body.Close()
+	if rd["read"] != true || rd["listId"] == nil {
+		t.Fatalf("read toggle = %v", rd)
+	}
+	var readIDs map[string][]int64
+	resp, _ = client.Get(ts.URL + "/api/v1/read")
+	json.NewDecoder(resp.Body).Decode(&readIDs)
+	resp.Body.Close()
+	if len(readIDs["ids"]) != 1 || readIDs["ids"][0] != bookID {
+		t.Fatalf("read ids = %v", readIDs)
+	}
+	resp = postJSON(t, client, ts.URL+"/api/v1/books/"+itoa64(bookID)+"/read", map[string]any{"read": false})
+	resp.Body.Close()
+	resp = postJSON(t, client, ts.URL+"/api/v1/books/"+itoa64(bookID)+"/wishlist", map[string]any{"add": true})
+	resp.Body.Close()
+
 	// The "Want to read" shelf on the home page
 	var shelves map[string][]map[string]any
 	resp, _ = client.Get(ts.URL + "/main/getBooks/getHomeShelves")
@@ -86,7 +106,7 @@ func TestReadingLists(t *testing.T) {
 	resp, _ = client.Get(ts.URL + "/api/v1/lists")
 	json.NewDecoder(resp.Body).Decode(&lists)
 	resp.Body.Close()
-	if len(lists["lists"]) != 2 {
+	if len(lists["lists"]) != 3 { // wishlist, read, custom
 		t.Fatalf("lists count = %d", len(lists["lists"]))
 	}
 	for _, l := range lists["lists"] {

@@ -17,8 +17,12 @@ vi.mock("../api/send", () => ({
 vi.mock("../api/lists", () => ({
   fetchLists: vi.fn(() => Promise.resolve({ lists: [] })),
   toggleWishlist: vi.fn(),
+  setRead: vi.fn(),
+  fetchReadIds: vi.fn(() => Promise.resolve({ ids: [] })),
 }));
 import { fetchBookForm } from "../api/fetchBooks";
+import { fetchLists, setRead } from "../api/lists";
+import { fireEvent, waitFor } from "@testing-library/react";
 
 const renderBook = () =>
   render(
@@ -49,5 +53,23 @@ describe("BookPage series link", () => {
     const { container } = renderBook();
     await screen.findByRole("link", { name: "Лукьяненко Сергей" });
     expect(container.querySelector(".book-page__series")).toBeNull();
+  });
+});
+
+describe("BookPage read toggle", () => {
+  it("marks read, drops the wishlist mark and unmarks", async () => {
+    fetchLists.mockResolvedValue({ lists: [{ id: 1, builtin: "wishlist" }, { id: 2, builtin: "read" }] });
+    fetchBookForm.mockResolvedValue({ ...book([]), bookListIds: [1] });
+    setRead.mockResolvedValueOnce({ ok: true, read: true, listId: 2 }).mockResolvedValueOnce({ ok: true, read: false, listId: 2 });
+    renderBook();
+    const button = await screen.findByRole("button", { name: /Прочитано|Read/ });
+    await waitFor(() => expect(document.querySelector(".book-page__wish.is-on")).not.toBeNull()); // in wishlist
+    fireEvent.click(button);
+    await waitFor(() => expect(button.className).toContain("is-on"));
+    expect(setRead).toHaveBeenLastCalledWith("7", true);
+    expect(document.querySelectorAll(".book-page__wish.is-on")).toHaveLength(1); // only "Read" is on
+    fireEvent.click(button);
+    await waitFor(() => expect(button.className).not.toContain("is-on"));
+    expect(setRead).toHaveBeenLastCalledWith("7", false);
   });
 });
