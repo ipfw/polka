@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +13,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/vestigiumincaligne/polka/internal/store"
 )
 
 var (
@@ -49,7 +50,7 @@ func (s *Server) handleBookEpub(w http.ResponseWriter, r *http.Request) {
 	}
 	cachePath := filepath.Join(cacheDir, strconv.FormatInt(f.ID, 10)+".epub")
 	if validRegularFile(cachePath) {
-		serveEpub(w, r, cachePath, f.File)
+		serveEpub(w, r, cachePath, f)
 		return
 	}
 
@@ -100,7 +101,7 @@ func (s *Server) handleBookEpub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("epub created", "book", f.ID, "path", cachePath)
-	serveEpub(w, r, cachePath, f.File)
+	serveEpub(w, r, cachePath, f)
 }
 
 func validRegularFile(path string) bool {
@@ -108,11 +109,10 @@ func validRegularFile(path string) bool {
 	return err == nil && st.Mode().IsRegular() && st.Size() > 0
 }
 
-func serveEpub(w http.ResponseWriter, r *http.Request, path, baseName string) {
-	name := baseName + ".epub"
-	disposition := mime.FormatMediaType("attachment", map[string]string{"filename": name})
+func serveEpub(w http.ResponseWriter, r *http.Request, path string, f *store.BookFile) {
 	w.Header().Set("Content-Type", "application/epub+zip")
-	w.Header().Set("Content-Disposition", disposition)
+	w.Header().Set("Content-Disposition", contentDisposition("attachment",
+		bookFileName(partsFromBookFile(f), "epub"), idFileName(f.ID, "epub")))
 	http.ServeFile(w, r, path)
 }
 
