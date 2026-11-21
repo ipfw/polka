@@ -10,13 +10,15 @@ const BookCard = ({ book, size = "md" }) => {
 
   if (!book) return null;
 
-  const { BookID, Title, AuthorsNames, SeriesTitle, SeqNumber, Year, LibRate, ReadingProgress } = book;
+  const { BookID, Title, AuthorsNames, Authors, SeriesID, SeriesTitle, SeqNumber, Year, LibRate, ReadingProgress } =
+    book;
 
   const initials = (Title || "").trim().slice(0, 2).toUpperCase();
   const seriesLabel =
     SeriesTitle && SeqNumber
       ? `${SeriesTitle} · ${SeqNumber}`
       : SeriesTitle || (Year ? `${Year}` : "");
+  const authorLinks = Array.isArray(Authors) ? Authors.filter((a) => a?.AuthorID && a?.Name) : [];
 
   return (
     <article className={`book-card book-card--${size}`}>
@@ -54,12 +56,35 @@ const BookCard = ({ book, size = "md" }) => {
         <Link to={`/book/${BookID}`} className="book-card__title" title={Title}>
           {Title}
         </Link>
-        {AuthorsNames && (
-          <div className="book-card__author" title={AuthorsNames}>
-            {AuthorsNames}
+        {authorLinks.length ? (
+          <div className="book-card__author" title={AuthorsNames || authorLinks.map((a) => a.Name).join(", ")}>
+            {authorLinks.map((a, i) => (
+              <span key={a.AuthorID}>
+                {i > 0 && ", "}
+                <Link to={`/author/${a.AuthorID}`} className="book-card__meta-link">
+                  {a.Name}
+                </Link>
+              </span>
+            ))}
+          </div>
+        ) : (
+          AuthorsNames && (
+            <div className="book-card__author" title={AuthorsNames}>
+              {AuthorsNames}
+            </div>
+          )
+        )}
+        {seriesLabel && (
+          <div className="book-card__series" title={SeriesTitle || undefined}>
+            {SeriesTitle && SeriesID ? (
+              <Link to={`/series/${SeriesID}`} className="book-card__meta-link">
+                {seriesLabel}
+              </Link>
+            ) : (
+              seriesLabel
+            )}
           </div>
         )}
-        {seriesLabel && <div className="book-card__series">{seriesLabel}</div>}
       </div>
     </article>
   );

@@ -31,6 +31,27 @@ describe("BookCard", () => {
     expect(document.querySelector(".book-card__progress")).toBeNull();
   });
 
+  it("links authors and the series when ids are present", () => {
+    renderCard({
+      ...book,
+      SeriesID: 45141,
+      Authors: [
+        { AuthorID: 3, Name: "Ильф Илья" },
+        { AuthorID: 7, Name: "Петров Евгений" },
+      ],
+    });
+    expect(screen.getByRole("link", { name: "Ильф Илья" })).toHaveAttribute("href", "/author/3");
+    expect(screen.getByRole("link", { name: "Петров Евгений" })).toHaveAttribute("href", "/author/7");
+    expect(screen.getByRole("link", { name: "Классика · 1" })).toHaveAttribute("href", "/series/45141");
+    expect(document.querySelector(".book-card__author").textContent).toBe("Ильф Илья, Петров Евгений");
+  });
+
+  it("keeps plain text without ids", () => {
+    renderCard(book);
+    expect(screen.queryByRole("link", { name: "Толстой Лев" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Классика · 1" })).toBeNull();
+  });
+
   it("falls back to the year when there is no series, hides an empty rating", () => {
     renderCard({ ...book, SeriesTitle: "", SeqNumber: 0, LibRate: 0 });
     expect(screen.getByText("1869")).toBeInTheDocument();

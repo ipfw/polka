@@ -37,7 +37,7 @@ func (s *Store) SimilarBooks(ctx context.Context, bookID int64, limit int) ([]Bo
 			          FROM book_authors ba JOIN authors a ON a.id = ba.author_id
 			          WHERE ba.book_id = b.id), ''),
 			coalesce(s2.title, ''), coalesce(b.series_num, 0), coalesce(b.year, 0),
-			b.lib_rate, b.ext, b.size,
+			b.lib_rate, b.ext, b.size`+bookRefColumns+`,
 			(SELECT count(*) FROM book_keywords bk JOIN seed_kw USING (keyword_id) WHERE bk.book_id = b.id) * 3.0
 			+ (SELECT count(*) FROM book_genres bg JOIN seed_genres USING (genre_id) WHERE bg.book_id = b.id) * 2.0
 			+ (SELECT count(*) FROM book_authors ba JOIN seed_authors USING (author_id) WHERE ba.book_id = b.id) * 1.2
@@ -60,10 +60,12 @@ func (s *Store) SimilarBooks(ctx context.Context, bookID int64, limit int) ([]Bo
 	for rows.Next() {
 		var b Book
 		var score float64
+		var authors string
 		if err := rows.Scan(&b.ID, &b.Title, &b.AuthorNames, &b.SeriesTitle,
-			&b.SeqNumber, &b.Year, &b.LibRate, &b.Ext, &b.Size, &score); err != nil {
+			&b.SeqNumber, &b.Year, &b.LibRate, &b.Ext, &b.Size, &b.SeriesID, &authors, &score); err != nil {
 			return nil, err
 		}
+		b.Authors = parseAuthorRefs(authors)
 		books = append(books, b)
 	}
 	return books, rows.Err()

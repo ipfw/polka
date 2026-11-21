@@ -162,6 +162,17 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Errorf("seriesList = %v", series)
 	}
 
+	// Book list rows carry link targets for the author and the series.
+	row := titles[0].(map[string]any)
+	if row["SeriesID"] != series[0].(map[string]any)["SeriesID"] {
+		t.Errorf("titlesList SeriesID = %v, series = %v", row["SeriesID"], series[0])
+	}
+	if refs, _ := row["Authors"].([]any); len(refs) != 1 ||
+		refs[0].(map[string]any)["AuthorID"] != authors[0].(map[string]any)["AuthorID"] ||
+		refs[0].(map[string]any)["Name"] != "Толстой Лев" {
+		t.Errorf("titlesList Authors = %v", row["Authors"])
+	}
+
 	// Author's books
 	authorID := int(authors[0].(map[string]any)["AuthorID"].(float64))
 	ab := getJSON(t, ts.URL+"/main/getBooks/getSearchAuthorBooks?selectedItemID="+itoa(authorID))

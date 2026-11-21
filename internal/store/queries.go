@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,42 @@ type Book struct {
 	LibRate     float64
 	Ext         string
 	Size        int64
+	SeriesID    int64
+	Authors     []AuthorRef // same authors as AuthorNames, with ids for links
+}
+
+// AuthorRef is an author link target: id and display name ("Last First").
+type AuthorRef struct {
+	ID   int64
+	Name string
+}
+
+// bookRefColumns are appended to book selects: series id and the author
+// list as "id\x1fname" pairs joined by \x1e (one subquery keeps ids and
+// names in the same order).
+const bookRefColumns = `,
+	coalesce(b.series_id, 0),
+	coalesce((SELECT group_concat(a.id || char(31) || trim(a.last_name || ' ' || a.first_name), char(30))
+	          FROM book_authors ba JOIN authors a ON a.id = ba.author_id
+	          WHERE ba.book_id = b.id), '')`
+
+// parseAuthorRefs decodes the bookRefColumns author list.
+func parseAuthorRefs(raw string) []AuthorRef {
+	var refs []AuthorRef
+	for _, item := range strings.Split(raw, "\x1e") {
+		idStr, name, ok := strings.Cut(item, "\x1f")
+		if !ok {
+			continue
+		}
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || id <= 0 {
+			continue
+		}
+		if name = strings.TrimSpace(name); name != "" {
+			refs = append(refs, AuthorRef{ID: id, Name: name})
+		}
+	}
+	return refs
 }
 
 // BookFile holds the data needed to serve a book file.
@@ -72,7 +109,7 @@ const bookColumns = `
 	coalesce(b.year, 0),
 	b.lib_rate,
 	b.ext,
-	b.size`
+	b.size` + bookRefColumns
 
 const bookFrom = ` FROM books b LEFT JOIN series s ON s.id = b.series_id`
 
@@ -101,10 +138,12 @@ func (s *Store) scanBooks(ctx context.Context, q string, args ...any) ([]Book, e
 	var books []Book
 	for rows.Next() {
 		var b Book
+		var authors string
 		if err := rows.Scan(&b.ID, &b.Title, &b.AuthorNames, &b.SeriesTitle,
-			&b.SeqNumber, &b.Year, &b.LibRate, &b.Ext, &b.Size); err != nil {
+			&b.SeqNumber, &b.Year, &b.LibRate, &b.Ext, &b.Size, &b.SeriesID, &authors); err != nil {
 			return nil, err
 		}
+		b.Authors = parseAuthorRefs(authors)
 		books = append(books, b)
 	}
 	return books, rows.Err()
@@ -457,11 +496,13 @@ func (s *Store) SearchBooks(ctx context.Context, query string, limit, offset int
 
 func (s *Store) BookDetails(ctx context.Context, bookID int64) (*BookDetails, error) {
 	d := &BookDetails{}
+	var authorRefs string
 	err := s.db.QueryRowContext(ctx,
 		`SELECT`+bookColumns+`, b.file, f.name`+bookFrom+
 			` JOIN folders f ON f.id = b.folder_id WHERE b.id = ? AND b.deleted = 0`, bookID).
 		Scan(&d.ID, &d.Title, &d.AuthorNames, &d.SeriesTitle, &d.SeqNumber,
-			&d.Year, &d.LibRate, &d.Ext, &d.Size, &d.File, &d.Folder)
+			&d.Year, &d.LibRate, &d.Ext, &d.Size, &d.SeriesID, &authorRefs, &d.File, &d.Folder)
+	d.Book.Authors = parseAuthorRefs(authorRefs)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
