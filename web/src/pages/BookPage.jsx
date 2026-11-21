@@ -234,13 +234,6 @@ const BookPage = ({ user, sync }) => {
       .join(", ");
   }, [data]);
 
-  const seriesLine = useMemo(() => {
-    if (!data?.series?.length) return null;
-    return data.series
-      .map((s) => (s.SeqNumber ? `${s.SeriesTitle}, № ${s.SeqNumber}` : s.SeriesTitle))
-      .join("; ");
-  }, [data]);
-
   if (loading) {
     return (
       <div className="container book-page">
@@ -321,7 +314,23 @@ const BookPage = ({ user, sync }) => {
         </aside>
 
         <section className="book-page__info">
-          {seriesLine && <div className="book-page__series">{seriesLine}</div>}
+          {data?.series?.length ? (
+            <div className="book-page__series">
+              {data.series.map((s, i) => (
+                <span key={s.SeriesID || i}>
+                  {i > 0 && "; "}
+                  {s.SeriesID ? (
+                    <Link to={`/series/${s.SeriesID}`} className="book-page__author-link">
+                      {s.SeriesTitle}
+                    </Link>
+                  ) : (
+                    s.SeriesTitle
+                  )}
+                  {s.SeqNumber ? `, № ${s.SeqNumber}` : ""}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           <h1 className="book-page__title">{Title}</h1>
 
