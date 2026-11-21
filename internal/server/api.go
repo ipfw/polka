@@ -16,7 +16,7 @@ import (
 
 // bookJSON converts a book to the format expected by the frontend.
 func bookJSON(b store.Book) map[string]any {
-	return map[string]any{
+	m := map[string]any{
 		"BookID":       b.ID,
 		"Title":        b.Title,
 		"AuthorsNames": b.AuthorNames,
@@ -25,6 +25,17 @@ func bookJSON(b store.Book) map[string]any {
 		"Year":         b.Year,
 		"LibRate":      b.LibRate,
 	}
+	if b.SeriesID > 0 {
+		m["SeriesID"] = b.SeriesID
+	}
+	if len(b.Authors) > 0 {
+		authors := make([]map[string]any, 0, len(b.Authors))
+		for _, a := range b.Authors {
+			authors = append(authors, map[string]any{"AuthorID": a.ID, "Name": a.Name})
+		}
+		m["Authors"] = authors
+	}
+	return m
 }
 
 func booksJSON(books []store.Book) []map[string]any {
