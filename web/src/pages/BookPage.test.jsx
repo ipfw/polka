@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { t } from "../i18n";
 import BookPage from "./BookPage";
 
 vi.mock("../api/fetchBooks", () => ({
@@ -37,18 +36,18 @@ const book = (series) => ({
 });
 
 describe("BookPage series link", () => {
-  it("links the series after the authors", async () => {
+  it("links the series name above the title", async () => {
     fetchBookForm.mockResolvedValue(book([{ SeriesID: 45141, SeriesTitle: "Дозоры", SeqNumber: 1 }]));
     renderBook();
     const link = await screen.findByRole("link", { name: "Дозоры" });
     expect(link.getAttribute("href")).toBe("/series/45141");
-    expect(link.closest(".book-page__series-links").textContent).toBe(`${t("book.series")} Дозоры, № 1`);
+    expect(link.closest(".book-page__series").textContent).toBe("Дозоры, № 1");
   });
 
   it("shows nothing for a book without a series", async () => {
     fetchBookForm.mockResolvedValue(book([]));
     const { container } = renderBook();
     await screen.findByRole("link", { name: "Лукьяненко Сергей" });
-    expect(container.querySelector(".book-page__series-links")).toBeNull();
+    expect(container.querySelector(".book-page__series")).toBeNull();
   });
 });
